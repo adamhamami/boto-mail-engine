@@ -1,0 +1,183 @@
+# Phase 8 — Release : build, push GHCR, GitHub Release
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag semver à publier (ex. v1.2.3)"
+        required: true
+        type: string
+      dry_run:
+        description: "Build sans push / sans GitHub Release"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  release:
+    name: Build · Push · GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      app_image: ${{ steps.meta.outputs.app }}
+      worker_image: ${{ steps.meta.outputs.worker }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          case "$TAG" in
+            v*.*.*) ;;
+            *) echo "Tag must match v*.*.* (got: $TAG)"; exit 1 ;;
+          esac
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          APP="${{ env.REGISTRY }}/${OWNER}/${REPO}/app"
+          WORKER="${{ env.REGISTRY }}/${OWNER}/${REPO}/worker"
+          {
+            echo "tag=${TAG}"
+            echo "app=${APP}"
+            echo "worker=${WORKER}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "TAG=${TAG}"
+            echo "APP_IMAGE=${APP}"
+            echo "WORKER_IMAGE=${WORKER}"
+          } >> "$GITHUB_ENV"
+          echo "Release target: ${TAG}"
+
+      - name: Ensure git tag (manual dispatch)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run != true
+        run: |
+          if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login GHCR
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push app
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: app
+          push: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+          load: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
+          tags: |
+            ${{ env.APP_IMAGE }}:${{ env.TAG }}
+            ${{ env.APP_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
+          cache-from: type=gha,scope=release-app
+          cache-to: type=gha,mode=max,scope=release-app
+
+      - name: Build & push worker
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.worker
+          target: worker
+          push: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+          load: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
+          tags: |
+            ${{ env.WORKER_IMAGE }}:${{ env.TAG }}
+            ${{ env.WORKER_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.TAG }}
+          cache-from: type=gha,scope=release-worker
+          cache-to: type=gha,mode=max,scope=release-worker
+
+      - name: Trivy scan (CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.APP_IMAGE }}:${{ env.TAG }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+        # Image must be local for dry_run; for push, pull first
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
+
+      - name: Pull app for scan (published)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+        run: docker pull "${{ env.APP_IMAGE }}:${{ env.TAG }}"
+
+      - name: Trivy scan published app (CRITICAL)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.APP_IMAGE }}:${{ env.TAG }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Create GitHub Release
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.TAG }}
+          generate_release_notes: true
+          body: |
+            ## Images
+
+            ```
+            docker pull ${{ env.APP_IMAGE }}:${{ env.TAG }}
+            docker pull ${{ env.WORKER_IMAGE }}:${{ env.TAG }}
+            ```
+
+            ## Deploy
+
+            Set `APP_IMAGE` / `WORKER_IMAGE` then:
+
+            ```bash
+            docker compose -f docker-compose.production.yml pull
+            docker compose -f docker-compose.production.yml up -d
+            ```
+
+            ## Rollback
+
+            GitHub → Actions → **Rollback** → previous tag.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

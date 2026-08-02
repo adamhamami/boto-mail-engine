@@ -1,0 +1,74 @@
+groups:
+  - name: botoschool
+    rules:
+      - alert: BotoSchoolDown
+        expr: botoschool_up == 0 or absent(botoschool_up)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance BotoSchool down"
+          description: "Le scrape Prometheus ne reçoit plus botoschool_up."
+
+      - alert: BotoSchoolNotReady
+        expr: botoschool_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Readiness KO"
+          description: "DB ou Redis non prêts."
+
+      - alert: BotoSchoolWorkerStale
+        expr: botoschool_worker_enabled == 1 and botoschool_worker_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Worker silencieux"
+          description: "Heartbeat worker stale."
+
+      - alert: BotoSchoolDlqDepth
+        expr: botoschool_dlq_depth > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DLQ non vide"
+          description: "Jobs en dead-letter queue."
+
+      - alert: BotoSchoolSmtpUnhealthy
+        expr: botoschool_smtp_up == 0 and botoschool_smtp_dry_run == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SMTP unhealthy"
+          description: "Connecteur SMTP en échec (hors DRY_RUN)."
+
+      - alert: BotoSchoolHighFailureRate
+        expr: botoschool_failure_rate > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'échec élevé"
+          description: "failure_rate > 10% sur la fenêtre."
+
+      - alert: BotoSchoolHighBounceRate
+        expr: botoschool_bounce_rate > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux de bounce élevé"
+          description: "bounce_rate > 5%."
+
+      - alert: BotoSchoolQueueBacklog
+        expr: botoschool_queue_jobs{queue="email-send",state="waiting"} > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File d'envoi saturée"
+          description: "waiting > 500 sur email-send."

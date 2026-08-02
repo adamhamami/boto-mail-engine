@@ -1,0 +1,283 @@
+# Phase 8 — CI : lint, typecheck, prisma, tests, coverage, audit, docker build/scan
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  SKIP_ENV_VALIDATION: "1"
+  DATABASE_URL: postgresql://botoschool:botoschool_secret@localhost:5432/botoschool_ci?schema=public
+  AUTH_SECRET: ci-only-auth-secret-min-32-characters-long!!
+  WEBHOOK_SECRET: ci-only-webhook-secret-min-32-characters!
+  APP_URL: http://localhost:3000
+  AUTH_URL: http://localhost:3000
+  REDIS_URL: redis://localhost:6379
+  DRY_RUN: "true"
+  NODE_ENV: test
+
+jobs:
+  # ─── Quality: Lint + Typecheck + Prisma ────────────────────────────────────
+  quality:
+    name: Lint · Typecheck · Prisma
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: botoschool
+          POSTGRES_PASSWORD: botoschool_secret
+          POSTGRES_DB: botoschool_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U botoschool -d botoschool_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma validate
+        run: npm run db:validate
+
+      - name: Prisma generate
+        run: npm run db:generate
+
+      - name: Prisma migrate deploy
+        run: npm run db:migrate:deploy
+
+      - name: Prisma migrate status
+        run: npm run db:migrate:status
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  # ─── Tests + Coverage ──────────────────────────────────────────────────────
+  test:
+    name: Tests · Coverage
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npm run db:generate
+
+      - name: Unit + recette tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/lcov.info
+            coverage/coverage-summary.json
+            coverage/index.html
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "
+              const s=require('./coverage/coverage-summary.json').total;
+              console.log('Lines:', s.lines.pct+'%');
+              console.log('Branches:', s.branches.pct+'%');
+              console.log('Functions:', s.functions.pct+'%');
+              console.log('Statements:', s.statements.pct+'%');
+            "
+          fi
+
+  # ─── npm audit ─────────────────────────────────────────────────────────────
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit report (JSON artifact)
+        run: npm audit --json > npm-audit.json || true
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit
+          path: npm-audit.json
+          retention-days: 30
+
+      - name: Fail on high+ (prod deps)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Fail on moderate+ (full tree)
+        run: npm audit --audit-level=moderate
+
+  # ─── Build (Next.js) ───────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npm run db:generate
+
+      - name: Next.js build
+        env:
+          NODE_ENV: production
+          SKIP_ENV_VALIDATION: "1"
+        run: npm run build
+
+  # ─── Docker Build + Scan ───────────────────────────────────────────────────
+  docker:
+    name: Docker Build · Scan
+    runs-on: ubuntu-latest
+    needs: [quality, build]
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          target: app
+          push: false
+          load: true
+          tags: botoschool-app:ci
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+
+      - name: Build worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.worker
+          target: worker
+          push: false
+          load: true
+          tags: botoschool-worker:ci
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
+
+      - name: Trivy scan — app
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: botoschool-app:ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Trivy scan — worker
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: botoschool-worker:ci
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Trivy SARIF — app (high+)
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: botoschool-app:ci
+          format: sarif
+          output: trivy-app.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy-app.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ─── Gate ──────────────────────────────────────────────────────────────────
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [quality, test, audit, build, docker]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          echo "quality=${{ needs.quality.result }}"
+          echo "test=${{ needs.test.result }}"
+          echo "audit=${{ needs.audit.result }}"
+          echo "build=${{ needs.build.result }}"
+          echo "docker=${{ needs.docker.result }}"
+          if [ "${{ needs.quality.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.audit.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.docker.result }}" != "success" ]; then
+            echo "One or more required CI jobs failed"
+            exit 1
+          fi
+          echo "All CI jobs passed"

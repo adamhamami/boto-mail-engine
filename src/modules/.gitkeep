@@ -1,0 +1,5 @@
+/**
+ * Module structure placeholder.
+ * Each module follows: routes → controllers → services → repositories
+ */
+export {};

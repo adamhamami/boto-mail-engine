@@ -1,0 +1,80 @@
+{
+  "uid": "botoschool-smtp",
+  "title": "BotoSchool — SMTP",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "tags": ["botoschool", "smtp"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "SMTP up (-1=N/A)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "botoschool_smtp_up", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "DRY_RUN",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "botoschool_smtp_dry_run", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Emails/min",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "botoschool_emails_per_minute", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Latence moy. ms",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "botoschool_avg_send_duration_ms", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Débit envoi",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "botoschool_emails_per_minute",
+          "legendFormat": "per min",
+          "refId": "A"
+        },
+        {
+          "expr": "botoschool_emails_per_hour",
+          "legendFormat": "per hour",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Rates",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "botoschool_open_rate",
+          "legendFormat": "open",
+          "refId": "A"
+        },
+        {
+          "expr": "botoschool_reply_rate",
+          "legendFormat": "reply",
+          "refId": "B"
+        },
+        {
+          "expr": "botoschool_bounce_rate",
+          "legendFormat": "bounce",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}

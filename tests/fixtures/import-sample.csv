@@ -1,0 +1,6 @@
+﻿email,prenom,nom,ville,organisation,type,taille,source,consentement
+contact1@exemple.com,Jean,Dupont,Casablanca,Ecole Alpha,prive,M,import,legitime_interet
+contact2@exemple.com,Marie,Martin,Rabat,Lycee Beta,public,L,import,legitime_interet
+=CMD(),Bad,Formula,Fes,Org,prive,S,import,consent
+invalid-email,X,Y,Tanger,Org,prive,S,import,consent
+contact1@exemple.com,Jean,Dup,Casablanca,Ecole Alpha,prive,M,import,legitime_interet

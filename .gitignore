@@ -30,8 +30,38 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# application rotated logs (LOG_TO_FILE)
+/logs
+*.log.gz
+
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.production.example
+.credentials.local
+
+# Docker secrets (Phase 7) — never commit real values
+/secrets/*.txt
+!/secrets/.gitkeep
+!/secrets/README.md
+# Prometheus scrape token (Étape 5)
+/monitoring/prometheus/scrape_token
+
+# Backups (Phase 10) — never commit dumps
+/backups/*
+!/backups/README.md
+
+# E2E artifacts
+/playwright-report/
+/test-results/
+/blob-report/
+
+# Agent / IDE skill caches (local)
+.agents/
+.claude/
+.windsurf/
 
 # vercel
 .vercel
@@ -39,3 +69,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+.tmp/
+.credentials.local
+

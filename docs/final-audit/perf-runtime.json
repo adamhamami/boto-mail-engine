@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-08-02T18:48:17.325Z",
+  "status": "SKIPPED_NO_SERVER",
+  "baseUrl": null,
+  "iterations": 20,
+  "endpoints": [],
+  "resources": {
+    "wallMs": 0,
+    "cpuTotalMs": 0,
+    "memory": {
+      "before": {
+        "rssMb": 67.4,
+        "heapUsedMb": 8.8,
+        "heapTotalMb": 11.9
+      },
+      "after": {
+        "rssMb": 67.5,
+        "heapUsedMb": 8.8,
+        "heapTotalMb": 11.9
+      }
+    }
+  },
+  "note": "Démarrer l’app puis PERF_BASE_URL=http://127.0.0.1:3000 npm run perf:runtime"
+}

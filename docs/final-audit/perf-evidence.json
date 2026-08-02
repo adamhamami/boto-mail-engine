@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-08-02T18:47:34.746Z",
+  "environment": {
+    "DRY_RUN": true,
+    "FakeMailProvider": true,
+    "FakeClock": true,
+    "MemoryQuotaStore": true,
+    "realSmtp": false
+  },
+  "load": {
+    "iterations": 2000,
+    "mailBurst": 200
+  },
+  "results": {
+    "quotas": {
+      "durationMs": 473,
+      "allowed": 200,
+      "denied": 1800,
+      "opsPerSec": 4226
+    },
+    "importClassify": {
+      "durationMs": 14,
+      "accepted": 1960,
+      "rejected": 40,
+      "rowsPerSec": 146979
+    },
+    "templateRender": {
+      "durationMs": 30,
+      "opsPerSec": 66037
+    },
+    "fakeMail": {
+      "durationMs": 0,
+      "sent": 200,
+      "msgsPerSec": 606612
+    }
+  },
+  "resources": {
+    "wallMs": 518,
+    "cpu": {
+      "userMs": 438,
+      "systemMs": 110,
+      "totalMs": 548,
+      "utilizationRatio": 1.058
+    },
+    "memory": {
+      "before": {
+        "rssMb": 77.7,
+        "heapUsedMb": 15,
+        "heapTotalMb": 21.2,
+        "externalMb": 3.5
+      },
+      "after": {
+        "rssMb": 113.5,
+        "heapUsedMb": 19.3,
+        "heapTotalMb": 31.9,
+        "externalMb": 3.4
+      },
+      "deltaRssMb": 35.8,
+      "deltaHeapUsedMb": 4.3
+    }
+  },
+  "verdict": "PASS_CONTROLLED_LOAD"
+}

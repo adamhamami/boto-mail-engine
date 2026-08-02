@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2026-08-02T19:17:09.362Z",
+  "provider": "ses",
+  "preset": {
+    "host": "email-smtp.<SES_REGION>.amazonaws.com",
+    "userHint": "SMTP username IAM dérivé",
+    "allowlist": "email-smtp.<region>.amazonaws.com",
+    "notes": [
+      "SMTP creds ≠ Access Key classiques",
+      "Sortir du sandbox SES avant volume",
+      "SES_* keys = quota lecture seule optionnel"
+    ]
+  },
+  "checks": [
+    {
+      "id": "provider.preset",
+      "status": "info",
+      "detail": "Hôte typique : email-smtp.<SES_REGION>.amazonaws.com"
+    },
+    {
+      "id": "provider.user",
+      "status": "info",
+      "detail": "SMTP_USER : SMTP username IAM dérivé"
+    },
+    {
+      "id": "provider.allowlist",
+      "status": "info",
+      "detail": "SMTP_HOST_ALLOWLIST=email-smtp.<region>.amazonaws.com"
+    },
+    {
+      "id": "provider.note",
+      "status": "info",
+      "detail": "SMTP creds ≠ Access Key classiques"
+    },
+    {
+      "id": "provider.note",
+      "status": "info",
+      "detail": "Sortir du sandbox SES avant volume"
+    },
+    {
+      "id": "provider.note",
+      "status": "info",
+      "detail": "SES_* keys = quota lecture seule optionnel"
+    },
+    {
+      "id": "gates.default",
+      "status": "info",
+      "detail": "Garder DRY_RUN=true + PRODUCTION_SENDING_ENABLED=false jusqu’à checklist GO"
+    },
+    {
+      "id": "preflight.dns",
+      "status": "info",
+      "detail": "npm run dns:checklist + /ops/dns = 0 CRITICAL"
+    },
+    {
+      "id": "preflight.smtp_ui",
+      "status": "info",
+      "detail": "/ops/smtp → healthy (probe)"
+    },
+    {
+      "id": "preflight.worker",
+      "status": "info",
+      "detail": "Worker up + /api/health/ready"
+    },
+    {
+      "id": "ramp.A",
+      "status": "info",
+      "detail": "Allowlist : SEND_QUOTA 5/h 20/j — 1–2 h"
+    },
+    {
+      "id": "ramp.B",
+      "status": "info",
+      "detail": "Soft : 20/h 100/j — 24 h"
+    },
+    {
+      "id": "ramp.C",
+      "status": "info",
+      "detail": "Pilot : 50/h 300/j — 3–7 j"
+    },
+    {
+      "id": "ramp.D",
+      "status": "info",
+      "detail": "Scale progressif si monitoring vert"
+    },
+    {
+      "id": "monitor.window",
+      "status": "info",
+      "detail": "30–60 min : /ops/monitoring #erreurs #alertes + Grafana SMTP"
+    },
+    {
+      "id": "rollback.order",
+      "status": "info",
+      "detail": "1) PRODUCTION_SENDING_ENABLED=false 2) DRY_RUN=true 3) restart 4) pause campagnes 5) révoquer clé ESP"
+    },
+    {
+      "id": "gates.safe",
+      "status": "pass",
+      "detail": "DRY_RUN=? PRODUCTION_SENDING_ENABLED=?"
+    }
+  ],
+  "docs": [
+    "docs/production/05-SMTP.md",
+    "docs/implementation/32-ETAPE-9-SMTP-REEL.md"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "uid": "botoschool-errors",
+  "title": "BotoSchool — Erreurs",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "tags": ["botoschool", "errors"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Alertes firing",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "botoschool_alerts_firing", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Failure rate",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "botoschool_failure_rate", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Bounce rate",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "botoschool_bounce_rate", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "DLQ",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "botoschool_dlq_depth", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Événements failed / bounced",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "botoschool_email_events{type=\"failed\"}",
+          "legendFormat": "failed",
+          "refId": "A"
+        },
+        {
+          "expr": "botoschool_email_events{type=\"bounced\"}",
+          "legendFormat": "bounced",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Retries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        { "expr": "botoschool_retries", "legendFormat": "retries", "refId": "A" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Remplacer par un secret fort (openssl rand -hex 32).
+# Copié dans le conteneur Prometheus — ne pas committer de vrai secret.
+change-me-metrics-scrape-token

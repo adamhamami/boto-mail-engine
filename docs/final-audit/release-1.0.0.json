@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-08-02T19:21:16.378Z",
+  "version": "1.0.0",
+  "tag": null,
+  "checks": [
+    {
+      "id": "version.package",
+      "status": "pass",
+      "detail": "package.json version=1.0.0"
+    },
+    {
+      "id": "docs.release_notes",
+      "status": "pass",
+      "detail": "docs/releases/v1.0.0.md"
+    },
+    {
+      "id": "docs.final",
+      "status": "pass",
+      "detail": "docs/FINAL.md"
+    },
+    {
+      "id": "git.tag",
+      "status": "info",
+      "detail": "tag v1.0.0 à créer après commit"
+    },
+    {
+      "id": "backup",
+      "status": "info",
+      "detail": "npm run backup — avant bascule / release"
+    },
+    {
+      "id": "docker.images",
+      "status": "info",
+      "detail": "docker build … -t botoschool-app:1.0.0 / botoschool-worker:1.0.0"
+    },
+    {
+      "id": "ramp",
+      "status": "info",
+      "detail": "Envoi réel : 10→50→100→500→1000 uniquement (docs/production/12-…)"
+    },
+    {
+      "id": "gates",
+      "status": "info",
+      "detail": "Défaut : DRY_RUN=true PRODUCTION_SENDING_ENABLED=false"
+    }
+  ],
+  "docs": [
+    "docs/releases/v1.0.0.md",
+    "docs/FINAL.md",
+    "docs/implementation/34-ETAPE-11-VERSION-1.0.md"
+  ]
+}

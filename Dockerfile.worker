@@ -1,0 +1,61 @@
+# syntax=docker/dockerfile:1.7
+# Worker BullMQ — multi-stage léger (sans build Next.js)
+# Alternative : docker build -f Dockerfile --target worker
+
+FROM node:20-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
+COPY package.json package-lock.json ./
+# Full install for prisma generate (prisma is a devDependency)
+RUN npm ci --ignore-scripts \
+  && npm cache clean --force
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+COPY tsconfig.json ./tsconfig.json
+COPY src ./src
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=1
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+RUN npx prisma generate
+
+FROM node:20-alpine AS prod-deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts \
+  && npm install tsx@4.23.1 --omit=dev --no-save \
+  && npm cache clean --force
+
+FROM node:20-alpine AS worker
+WORKDIR /app
+ENV NODE_ENV=production
+ENV WORKER_ENABLED=true
+
+RUN apk add --no-cache libc6-compat openssl \
+  && addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 worker \
+  && mkdir -p /app/logs /app/.tmp \
+  && chown -R worker:nodejs /app/logs /app/.tmp
+
+COPY --from=prod-deps --chown=worker:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=worker:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=worker:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder --chown=worker:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=worker:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=worker:nodejs /app/tsconfig.json ./tsconfig.json
+COPY --from=builder --chown=worker:nodejs /app/src ./src
+COPY --chown=worker:nodejs package.json ./package.json
+COPY --chown=worker:nodejs scripts/docker-worker-healthcheck.mjs ./scripts/docker-worker-healthcheck.mjs
+
+USER worker
+
+HEALTHCHECK --interval=30s --timeout=8s --start-period=50s --retries=3 \
+  CMD node scripts/docker-worker-healthcheck.mjs
+
+CMD ["npx", "tsx", "src/workers/index.ts"]

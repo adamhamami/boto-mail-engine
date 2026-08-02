@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-08-02T19:12:03.176Z",
+  "domain": null,
+  "checks": [
+    {
+      "id": "process.dedicated_domain",
+      "status": "info",
+      "detail": "Utiliser un sous-domaine dédié (mail. / noreply.)"
+    },
+    {
+      "id": "process.records",
+      "status": "info",
+      "detail": "Publier SPF + DKIM + DMARC + MX/null MX + PTR ESP"
+    },
+    {
+      "id": "process.ops_ui",
+      "status": "info",
+      "detail": "Valider /ops/dns — 0 CRITICAL avant sortie DRY_RUN"
+    },
+    {
+      "id": "process.reputation",
+      "status": "info",
+      "detail": "MXToolbox blacklist + Google Postmaster + SNDS si applicable"
+    },
+    {
+      "id": "process.spam_score",
+      "status": "info",
+      "detail": "mail-tester.com ≥ 8/10 sur envoi allowlist"
+    },
+    {
+      "id": "process.headers",
+      "status": "info",
+      "detail": "Authentication-Results : spf=pass dkim=pass dmarc=pass"
+    },
+    {
+      "id": "lookup.skipped",
+      "status": "info",
+      "detail": "Définir DNS_CHECK_DOMAIN=… pour lookups TXT automatiques"
+    }
+  ],
+  "next": [
+    "Ouvrir /ops/dns",
+    "mail-tester.com",
+    "Postmaster Tools",
+    "docs/production/06-DNS.md §5 GO grid"
+  ]
+}

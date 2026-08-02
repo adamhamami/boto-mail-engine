@@ -1,0 +1,120 @@
+# ─── Local / shared infrastructure ───────────────────────────────────────────
+# Usage:
+#   npm run docker:up          → postgres + redis
+#   npm run docker:tools       → + mailpit
+# Production / staging :
+#   docker compose -f docker-compose.production.yml up -d --build
+#   docker compose -f docker-compose.staging.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: botoschool-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-botoschool}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-botoschool_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-botoschool_email}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-botoschool} -d ${POSTGRES_DB:-botoschool_email}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: botoschool-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --save 60 1000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: botoschool-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    profiles:
+      - tools
+
+  # ─── Observabilité (Étape 5) ───────────────────────────────────────────────
+  # npm run docker:monitoring
+  # Prérequis : app sur :3000 + METRICS_SCRAPE_TOKEN aligné avec
+  # monitoring/prometheus/scrape_token
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: botoschool-prometheus
+    restart: unless-stopped
+    profiles: [monitoring]
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./monitoring/prometheus/scrape_token:/etc/prometheus/scrape_token:ro
+      - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    networks:
+      - default
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: botoschool-alertmanager
+    restart: unless-stopped
+    profiles: [monitoring]
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: botoschool-grafana
+    restart: unless-stopped
+    profiles: [monitoring]
+    ports:
+      - "${GRAFANA_PORT:-3010}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

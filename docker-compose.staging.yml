@@ -1,0 +1,226 @@
+# ─── Docker Compose Staging (Phase 7) ────────────────────────────────────────
+# Environnement de préprod : Mailpit, DRY_RUN par défaut, ports exposés pour QA.
+#
+#   cp .env.staging.example .env.staging
+#   npm run docker:secrets -- --env staging
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+
+name: botoschool-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-botoschool}
+      POSTGRES_DB: ${POSTGRES_DB:-botoschool_email_staging}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - staging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - staging_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1026}:1025"
+      - "${MAILPIT_UI_PORT:-8026}:8025"
+    networks:
+      - staging
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: ${APP_IMAGE:-botoschool-app:staging}
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3001}:3000"
+    env_file:
+      - path: .env.staging
+        required: false
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL:-http://localhost:3001}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3001}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-botoschool}
+      POSTGRES_DB: ${POSTGRES_DB:-botoschool_email_staging}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      AUTH_SECRET_FILE: /run/secrets/auth_secret
+      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      MAIL_PROVIDER: smtp
+      DRY_RUN: ${DRY_RUN:-true}
+      PRODUCTION_SENDING_ENABLED: ${PRODUCTION_SENDING_ENABLED:-false}
+      LOG_JSON: "true"
+      RATE_LIMIT_STORE: redis
+      LOG_TO_FILE: "true"
+      LOG_DIR: /app/logs
+    secrets:
+      - postgres_password
+      - auth_secret
+      - webhook_secret
+      - smtp_password
+    volumes:
+      - staging_app_logs:/app/logs
+      - staging_app_tmp:/app/.tmp
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health/ready"]
+      interval: 20s
+      timeout: 8s
+      retries: 3
+      start_period: 50s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "7"
+        compress: "true"
+    networks:
+      - staging
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: worker
+    image: ${WORKER_IMAGE:-botoschool-worker:staging}
+    restart: unless-stopped
+    env_file:
+      - path: .env.staging
+        required: false
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-botoschool}
+      POSTGRES_DB: ${POSTGRES_DB:-botoschool_email_staging}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      AUTH_SECRET_FILE: /run/secrets/auth_secret
+      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
+      MAIL_PROVIDER: smtp
+      DRY_RUN: ${DRY_RUN:-true}
+      PRODUCTION_SENDING_ENABLED: ${PRODUCTION_SENDING_ENABLED:-false}
+      WORKER_ENABLED: "true"
+      LOG_JSON: "true"
+      LOG_TO_FILE: "true"
+      LOG_DIR: /app/logs
+    secrets:
+      - postgres_password
+      - auth_secret
+      - webhook_secret
+      - smtp_password
+    volumes:
+      - staging_worker_logs:/app/logs
+      - staging_worker_tmp:/app/.tmp
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "scripts/docker-worker-healthcheck.mjs"]
+      interval: 20s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "7"
+        compress: "true"
+    networks:
+      - staging
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  auth_secret:
+    file: ./secrets/auth_secret.txt
+  webhook_secret:
+    file: ./secrets/webhook_secret.txt
+  smtp_password:
+    file: ./secrets/smtp_password.txt
+
+volumes:
+  staging_postgres_data:
+  staging_redis_data:
+  staging_app_logs:
+  staging_worker_logs:
+  staging_app_tmp:
+  staging_worker_tmp:
+
+networks:
+  staging:
+    driver: bridge

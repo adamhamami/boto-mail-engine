@@ -1,0 +1,155 @@
+# Phase 8 — Rollback : re-pointe les tags d'environnement vers une release antérieure
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement cible"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      target_tag:
+        description: "Tag de release à restaurer (ex. v1.2.2)"
+        required: true
+        type: string
+      confirm:
+        description: "Taper rollback pour confirmer"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: rollback-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  rollback:
+    name: Rollback ${{ inputs.environment }} → ${{ inputs.target_tag }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Confirm
+        run: |
+          if [ "${{ inputs.confirm }}" != "rollback" ]; then
+            echo "Confirmation invalide — tapez exactement: rollback"
+            exit 1
+          fi
+          case "${{ inputs.target_tag }}" in
+            v*.*.*) ;;
+            *) echo "target_tag must match v*.*.*"; exit 1 ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve images
+        id: meta
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          ENV_TAG="${{ inputs.environment }}"
+          TARGET="${{ inputs.target_tag }}"
+          APP="${{ env.REGISTRY }}/${OWNER}/${REPO}/app"
+          WORKER="${{ env.REGISTRY }}/${OWNER}/${REPO}/worker"
+          {
+            echo "app=${APP}"
+            echo "worker=${WORKER}"
+            echo "env_tag=${ENV_TAG}"
+            echo "target=${TARGET}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "APP_IMAGE=${APP}"
+            echo "WORKER_IMAGE=${WORKER}"
+            echo "ENV_TAG=${ENV_TAG}"
+            echo "TARGET=${TARGET}"
+          } >> "$GITHUB_ENV"
+
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Retag app → environment
+        run: |
+          docker buildx imagetools create \
+            --tag "${APP_IMAGE}:${ENV_TAG}" \
+            --tag "${APP_IMAGE}:${ENV_TAG}-rollback-$(date -u +%Y%m%d%H%M%S)" \
+            "${APP_IMAGE}:${TARGET}"
+
+      - name: Retag worker → environment
+        run: |
+          docker buildx imagetools create \
+            --tag "${WORKER_IMAGE}:${ENV_TAG}" \
+            --tag "${WORKER_IMAGE}:${ENV_TAG}-rollback-$(date -u +%Y%m%d%H%M%S)" \
+            "${WORKER_IMAGE}:${TARGET}"
+
+      - name: Verify manifests
+        run: |
+          docker buildx imagetools inspect "${APP_IMAGE}:${ENV_TAG}"
+          docker buildx imagetools inspect "${WORKER_IMAGE}:${ENV_TAG}"
+
+      - name: Write rollback record
+        run: |
+          mkdir -p rollback-records
+          cat > "rollback-records/${{ inputs.environment }}-${{ github.run_id }}.md" <<EOF
+          # Rollback ${{ inputs.environment }} → ${{ inputs.target_tag }}
+
+          - Actor: @${{ github.actor }}
+          - Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - App: ${{ env.APP_IMAGE }}:${{ inputs.environment }} → ${{ inputs.target_tag }}
+          - Worker: ${{ env.WORKER_IMAGE }}:${{ inputs.environment }} → ${{ inputs.target_tag }}
+
+          ## Server pull
+
+          \`\`\`bash
+          export APP_IMAGE=${{ env.APP_IMAGE }}:${{ inputs.environment }}
+          export WORKER_IMAGE=${{ env.WORKER_IMAGE }}:${{ inputs.environment }}
+          docker compose -f docker-compose.production.yml pull
+          docker compose -f docker-compose.production.yml up -d
+          \`\`\`
+          EOF
+
+      - name: Upload rollback record
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-${{ inputs.environment }}-${{ github.run_id }}
+          path: rollback-records/
+          retention-days: 90
+
+      - name: Summary
+        run: |
+          {
+            echo "## Rollback OK"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Environment | \`${{ inputs.environment }}\` |"
+            echo "| Restored tag | \`${{ inputs.target_tag }}\` |"
+            echo "| App | \`${{ env.APP_IMAGE }}:${{ inputs.environment }}\` |"
+            echo "| Worker | \`${{ env.WORKER_IMAGE }}:${{ inputs.environment }}\` |"
+            echo ""
+            echo "### Deploy on server"
+            echo ""
+            echo '```bash'
+            echo "export APP_IMAGE=${{ env.APP_IMAGE }}:${{ inputs.environment }}"
+            echo "export WORKER_IMAGE=${{ env.WORKER_IMAGE }}:${{ inputs.environment }}"
+            echo "docker compose -f docker-compose.production.yml pull"
+            echo "docker compose -f docker-compose.production.yml up -d"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

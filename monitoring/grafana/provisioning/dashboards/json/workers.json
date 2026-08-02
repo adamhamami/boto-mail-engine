@@ -1,0 +1,62 @@
+{
+  "uid": "botoschool-workers",
+  "title": "BotoSchool — Workers",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "tags": ["botoschool", "workers"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Worker up",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "botoschool_worker_up", "refId": "A" }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Instances",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "botoschool_worker_instances", "refId": "A" }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Redis",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "botoschool_redis_connected", "refId": "A" }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Ready",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "botoschool_ready", "refId": "A" }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Queues BullMQ",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "botoschool_queue_jobs{state=\"waiting\"}",
+          "legendFormat": "{{queue}} waiting",
+          "refId": "A"
+        },
+        {
+          "expr": "botoschool_queue_jobs{state=\"active\"}",
+          "legendFormat": "{{queue}} active",
+          "refId": "B"
+        },
+        {
+          "expr": "botoschool_queue_jobs{state=\"failed\"}",
+          "legendFormat": "{{queue}} failed",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}
