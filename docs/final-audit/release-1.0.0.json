@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-02T19:21:16.378Z",
+  "generatedAt": "2026-08-02T19:23:49.052Z",
   "version": "1.0.0",
-  "tag": null,
+  "tag": "v1.0.0",
   "checks": [
     {
       "id": "version.package",
@@ -20,8 +20,8 @@
     },
     {
       "id": "git.tag",
-      "status": "info",
-      "detail": "tag v1.0.0 à créer après commit"
+      "status": "pass",
+      "detail": "tag v1.0.0 présent"
     },
     {
       "id": "backup",

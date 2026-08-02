@@ -44,8 +44,10 @@ npm run backup -- --compose=docker-compose.production.yml
 # ou staging / local compose
 
 # Images
-docker build -f Dockerfile --target app -t botoschool-app:1.0.0 .
-docker build -f Dockerfile.worker --target worker -t botoschool-worker:1.0.0 .
+npm run docker:tag-release
+# ou :
+# docker build -f Dockerfile --target app -t botoschool-app:1.0.0 .
+# docker build -f Dockerfile.worker --target worker -t botoschool-worker:1.0.0 .
 
 # Tag (après commit)
 git tag -a v1.0.0 -m "Release v1.0.0 — BotoSchool Email Platform"

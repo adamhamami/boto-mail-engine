@@ -46,6 +46,7 @@
     "smtp:checklist": "node scripts/smtp-checklist.mjs",
     "ramp:checklist": "node scripts/production-ramp-checklist.mjs",
     "release:checklist": "node scripts/release-checklist.mjs",
+    "docker:tag-release": "node scripts/docker-tag-release.mjs",
     "docker:down": "docker compose -f docker-compose.yml down",
     "docker:down:prod": "docker compose -f docker-compose.production.yml down",
     "docker:down:staging": "docker compose -f docker-compose.staging.yml down",
