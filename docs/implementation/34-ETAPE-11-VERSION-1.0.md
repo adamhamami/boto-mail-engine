@@ -20,15 +20,16 @@ sauvegarde, images Docker, version **1.0.0**.
 
 ## 2. Checklist release
 
-- [ ] `npm run typecheck` · `npm run test` · `npm run build`
+- [x] `npm run typecheck` · `npm run test` (lint OK)
+- [ ] `npm run build` (couvert aussi par build image Docker)
 - [ ] `npm run validate:final` (si env dispo)
 - [ ] Staging smoke OK
 - [ ] DNS + SMTP checklists OK (même si encore DRY_RUN)
-- [ ] Backup frais documenté / exécuté
-- [ ] `package.json` version `1.0.0`
-- [ ] Release notes publiées
-- [ ] Commit release + tag annoté `v1.0.0`
-- [ ] Images Docker build/tag `1.0.0` / `v1.0.0`
+- [x] Backup frais exécuté + vérifié (`2026-08-02T19-34-44-963Z`, compose local)
+- [x] `package.json` version `1.0.0`
+- [x] Release notes publiées
+- [x] Commit release + tag annoté `v1.0.0`
+- [x] Images Docker build/tag `1.0.0` / `v1.0.0`
 - [ ] (Option) `git push origin master --tags`
 
 ---

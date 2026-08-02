@@ -60,8 +60,10 @@ Guide : [production/07-BACKUP.md](./production/07-BACKUP.md).
 
 ```bash
 # Build taggés localement
-docker build -f Dockerfile --target app -t botoschool-app:1.0.0 -t botoschool-app:v1.0.0 .
-docker build -f Dockerfile.worker --target worker -t botoschool-worker:1.0.0 -t botoschool-worker:v1.0.0 .
+npm run docker:tag-release
+# équivalent :
+# docker build -f Dockerfile --target app -t botoschool-app:1.0.0 -t botoschool-app:v1.0.0 .
+# docker build -f Dockerfile.worker --target worker -t botoschool-worker:1.0.0 -t botoschool-worker:v1.0.0 .
 
 # Ou via compose prod
 APP_IMAGE=botoschool-app:1.0.0 WORKER_IMAGE=botoschool-worker:1.0.0 npm run docker:prod

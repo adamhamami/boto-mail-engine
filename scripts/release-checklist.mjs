@@ -1,7 +1,7 @@
 /**
  * Checklist release v1.0.0 (Étape 11) — n’exécute pas tag/docker (affichage + preuves).
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -54,11 +54,37 @@ function main() {
     hasTag ? "tag v1.0.0 présent" : "tag v1.0.0 à créer après commit",
   );
 
-  add("backup", "info", "npm run backup — avant bascule / release");
+  const backupDirs = existsSync(path.join(root, "backups"))
+    ? readdirSync(path.join(root, "backups")).filter((n) =>
+        /^\d{4}-\d{2}-\d{2}T/.test(n),
+      )
+    : [];
+  add(
+    "backup",
+    backupDirs.length > 0 ? "pass" : "info",
+    backupDirs.length > 0
+      ? `dernier backup local: ${backupDirs.sort().at(-1)}`
+      : "npm run backup — avant bascule / release",
+  );
+
+  const docker = spawnSync(
+    "docker",
+    ["images", "-q", "botoschool-app:1.0.0"],
+    { encoding: "utf8", shell: true },
+  );
+  const dockerWorker = spawnSync(
+    "docker",
+    ["images", "-q", "botoschool-worker:1.0.0"],
+    { encoding: "utf8", shell: true },
+  );
+  const hasApp = Boolean((docker.stdout || "").trim());
+  const hasWorker = Boolean((dockerWorker.stdout || "").trim());
   add(
     "docker.images",
-    "info",
-    "docker build … -t botoschool-app:1.0.0 / botoschool-worker:1.0.0",
+    hasApp && hasWorker ? "pass" : "info",
+    hasApp && hasWorker
+      ? "botoschool-app:1.0.0 + botoschool-worker:1.0.0 présents"
+      : "docker build … -t botoschool-app:1.0.0 / botoschool-worker:1.0.0",
   );
   add(
     "ramp",

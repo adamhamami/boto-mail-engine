@@ -1,5 +1,5 @@
-# Build & tag Docker images for v1.0.0 (Étape 11)
-# Usage: node scripts/docker-tag-release.mjs
+// Build & tag Docker images for v1.0.0 (Etape 11)
+// Usage: node scripts/docker-tag-release.mjs
 import { spawnSync } from "node:child_process";
 
 const VERSION = "1.0.0";
@@ -13,7 +13,7 @@ function run(cmd, args) {
   }
 }
 
-console.log(`Building Docker images for ${VERSION}…`);
+console.log(`Building Docker images for ${VERSION}...`);
 
 run("docker", [
   "build",

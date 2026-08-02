@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-02T19:23:49.052Z",
+  "generatedAt": "2026-08-02T19:47:23.890Z",
   "version": "1.0.0",
   "tag": "v1.0.0",
   "checks": [
@@ -25,13 +25,13 @@
     },
     {
       "id": "backup",
-      "status": "info",
-      "detail": "npm run backup — avant bascule / release"
+      "status": "pass",
+      "detail": "dernier backup local: 2026-08-02T19-34-44-963Z"
     },
     {
       "id": "docker.images",
-      "status": "info",
-      "detail": "docker build … -t botoschool-app:1.0.0 / botoschool-worker:1.0.0"
+      "status": "pass",
+      "detail": "botoschool-app:1.0.0 + botoschool-worker:1.0.0 présents"
     },
     {
       "id": "ramp",

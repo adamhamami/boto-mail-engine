@@ -59,7 +59,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# Prisma 7 client is in src/generated (custom output) — no node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/adapter-pg ./node_modules/@prisma/adapter-pg
@@ -113,9 +113,7 @@ COPY --from=builder --chown=worker:nodejs /app/src ./src
 COPY --from=builder --chown=worker:nodejs /app/src/generated ./src/generated
 COPY --chown=worker:nodejs scripts/docker-worker-healthcheck.mjs ./scripts/docker-worker-healthcheck.mjs
 
-# Client Prisma généré (évite generate au runtime)
-COPY --from=builder --chown=worker:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=worker:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Prisma 7 client déjà sous src/generated (copie src ci-dessus)
 
 USER worker
 

@@ -44,8 +44,7 @@ RUN apk add --no-cache libc6-compat openssl \
   && chown -R worker:nodejs /app/logs /app/.tmp
 
 COPY --from=prod-deps --chown=worker:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=worker:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=worker:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+# Prisma 7 client is in src/generated (copied with src below)
 COPY --from=builder --chown=worker:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=worker:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=worker:nodejs /app/tsconfig.json ./tsconfig.json
