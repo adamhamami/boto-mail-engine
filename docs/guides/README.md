@@ -2,6 +2,8 @@
 
 | Guide | Public | Contenu |
 |---|---|---|
+| [GUIDE-COMMERCIAL.md](./GUIDE-COMMERCIAL.md) | Commerciaux | Parcours métier en 6 étapes (bref) |
+| [GUIDE-DEMARRAGE.md](./GUIDE-DEMARRAGE.md) | Tous | Démarrage, rubriques UI, boutons détaillés |
 | [DEVELOPER.md](./DEVELOPER.md) | Ingénieurs | Setup local, conventions, tests |
 | [ADMIN.md](./ADMIN.md) | Administrateurs métier | RBAC, campagnes, CNDP, settings |
 | [OPERATOR.md](./OPERATOR.md) | Ops / on-call | Health, alertes, kill switch, deploy |

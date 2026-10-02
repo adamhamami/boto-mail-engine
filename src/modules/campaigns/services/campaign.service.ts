@@ -650,6 +650,19 @@ export class CampaignService {
     let enqueued = 0;
     let recipientRows = 0;
 
+    // Mode test : passer TESTED avant enqueue (évite course worker sur statut DRAFT).
+    if (isTestMode && campaign.status === CampaignStatus.DRAFT) {
+      await campaignRepository.updateStatus(
+        id,
+        {
+          status: CampaignStatus.TESTED,
+          startedAt,
+          testedAt: startedAt,
+        },
+        userId,
+      );
+    }
+
     for (const contact of contactsToSend) {
       for (const step of emailSteps) {
         const tpl = templateById.get(step.templateId)!;

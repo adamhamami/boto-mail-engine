@@ -17,6 +17,11 @@ import {
 import { nextValidSendSlot, type SendWindowConfig } from "./send-window";
 import { DEFAULT_CAMPAIGN_TIMEZONE } from "./timezone";
 
+/** BullMQ interdit ':' dans jobId — clé DB inchangée. */
+function toBullMqJobId(idempotencyKey: string): string {
+  return idempotencyKey.replace(/:/g, "__");
+}
+
 export interface PlannedRecipientStep {
   contactId: string;
   contactEmail: string;
@@ -190,7 +195,7 @@ export async function enqueueEmailJob(
 
   try {
     await add("send-email", payload, {
-      jobId: data.idempotencyKey,
+      jobId: toBullMqJobId(data.idempotencyKey),
       delay: delayMs > 0 ? delayMs : undefined,
     });
   } catch (error) {
