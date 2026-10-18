@@ -128,7 +128,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=release-worker
 
       - name: Trivy scan (CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.APP_IMAGE }}:${{ env.TAG }}
           format: table
@@ -144,7 +144,7 @@ jobs:
 
       - name: Trivy scan published app (CRITICAL)
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.APP_IMAGE }}:${{ env.TAG }}
           format: table
