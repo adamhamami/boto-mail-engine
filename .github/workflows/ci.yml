@@ -222,7 +222,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=worker
 
       - name: Trivy scan — app
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: botoschool-app:ci
           format: table
@@ -231,7 +231,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy scan — worker
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: botoschool-worker:ci
           format: table
@@ -240,7 +240,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Trivy SARIF — app (high+)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         continue-on-error: true
         with:
           image-ref: botoschool-app:ci
